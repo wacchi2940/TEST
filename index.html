@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IRON FIST DATABASE - キャラクター選択</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;700&family=Noto+Sans+JP:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #050505;
+            color: #f1f5f9;
+        }
+
+        .oswald {
+            font-family: 'Oswald', sans-serif;
+        }
+
+        /* アニメーション背景 */
+        @keyframes hero-bg-anim {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .hero-bg {
+            background: linear-gradient(-45deg, #000000, #3a0000, #0a000d, #000000);
+            background-size: 400% 400%;
+            animation: hero-bg-anim 15s ease infinite;
+        }
+
+        /* 鉄拳風のキャラクターカード */
+        .character-card {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            border: 2px solid #1c1917;
+            background: #0c0a09;
+        }
+
+        .character-card:hover {
+            border-color: #ef4444;
+            transform: scale(1.08);
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+            z-index: 20;
+        }
+
+        .tekken-font {
+            text-transform: uppercase;
+            font-style: italic;
+            letter-spacing: -0.05em;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            transition: opacity 0.5s ease;
+        }
+    </style>
+</head>
+<body class="selection:bg-red-600 selection:text-white overflow-x-hidden">
+
+    <!-- Loading Screen -->
+    <div id="loader" class="loading-overlay">
+        <div class="text-3xl oswald animate-pulse text-red-600 tracking-widest">INITIALIZING DATABASE...</div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="sticky top-0 z-50 bg-black/95 border-b border-red-900/40 backdrop-blur-sm">
+        <div class="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
+            <h1 class="text-xl font-bold oswald tekken-font text-red-600">IRON FIST DATABASE</h1>
+            <div class="flex items-center gap-6 text-xs font-bold">
+                <a href="#" class="hover:text-red-500 transition text-red-500">FRAME DATA</a>
+                <a href="#" class="text-slate-500 hover:text-white transition">SYSTEM</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero / Header Section -->
+    <div class="relative h-[180px] w-full overflow-hidden border-b border-zinc-900 hero-bg">
+        <div class="absolute inset-0 bg-black/40"></div>
+        <div class="relative max-w-7xl mx-auto px-4 h-full flex flex-col justify-center items-center text-center">
+            <h2 class="text-3xl md:text-5xl font-black oswald tekken-font italic tracking-tighter">SELECT YOUR FIGHTER</h2>
+            <p class="text-zinc-400 text-[10px] tracking-widest uppercase mt-2">Latest Frame Data Database // Patch 3.02</p>
+        </div>
+    </div>
+
+    <!-- Character Selection Area -->
+    <main class="max-w-7xl mx-auto px-4 py-8" id="selection-area">
+        <!-- Generated dynamically by JavaScript -->
+    </main>
+
+    <!-- Custom Toast Notification Box -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 bg-zinc-950 border border-red-900 text-white px-5 py-4 rounded shadow-2xl flex items-center gap-3 transition-all duration-300 transform translate-y-20 opacity-0 pointer-events-none">
+        <div class="w-2 h-2 rounded-full bg-red-600 animate-ping"></div>
+        <div class="text-xs font-bold tracking-wider" id="toast-text">MESSAGE</div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="border-t border-zinc-950 bg-black py-8 mt-16">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <p class="text-zinc-700 text-[9px] uppercase tracking-widest">
+                Fan-made Database Site.<br>
+                TEKKEN™ & ©Bandai Namco Entertainment Inc.
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        // キャラクターデータをベースおよびシーズン別にグループ化して定義（全44名）
+        const characterGroups = {
+            "BASE GAME": [
+                "Alisa","Asuka","Azucena","Bryan","Claudio","Devil Jin","Dragunov","Feng",
+                "Hwoarang","Jack-8","Jin","Jun","Kazuya","King","Kuma","Panda",
+                "Lars","Law","Lee","Leo","Leroy","Lili","Nina","Paul",
+                "Raven","Reina","Shaheen","Steve","Victor","Xiaoyu","Yoshimitsu","Zafina"
+            ],
+            "SEASON 1": [
+                "Eddy","Lidia","Heihachi","Clive"
+            ],
+            "SEASON 2": [
+                "Anna","Fahkumram","Armor King","Miaryzo"
+            ],
+            "SEASON 3": [
+                "Kunimitsu","Bob","Roger Jr.","？？？"
+            ]
+        };
+
+        // Liliのみ外部のGoogleサイトへリンク、その他はデモ扱い
+        const customLinks = {
+            "Lili": "https://sites.google.com/d/1eVNgeQWTOb8f80Z1dXCaVKwiRDIi8hPk/p/1xAItortbCDRMF_huqAgaOdYo-A2VpP2N"
+        };
+
+        // 各キャラクターの画像URL（Googleドライブの直リンク）
+        const characterImages = {
+            "Alisa": "https://lh3.googleusercontent.com/d/1eJkHU0ckFDP-YhyILpxh9Wh2O1vMIheP",
+            "Asuka": "https://lh3.googleusercontent.com/d/1tKJaJHAJj5WZIKBDyyi_sSAuJ1-tRLNu",
+            "Azucena": "https://lh3.googleusercontent.com/d/1QSt6Mq1_1ZXi-RHMvqKzJcMMl2Eplnqn",
+            "Bryan": "https://lh3.googleusercontent.com/d/1jcIfeYYuLfBsI6Uf-IQQXxr_29tJ-LrO",
+            "Claudio": "https://lh3.googleusercontent.com/d/15Gdr5POv1A8zAaBkVbCPTXQLBoxphzB6",
+            "Devil Jin": "https://lh3.googleusercontent.com/d/1T89ml807FxxrFo0hqCH90NEK_GK-7b3q",
+            "Dragunov": "https://lh3.googleusercontent.com/d/1Q7Czlo0cJJVhhrV02vpMwx2r91ZBgkH3",
+            "Feng": "https://lh3.googleusercontent.com/d/1lwYsNK5hSb2MbiawvHFLesvOW4VHTI74",
+            "Hwoarang": "https://lh3.googleusercontent.com/d/171ATf65h-lVB4YW0d_sINlyUSiEpMZKE",
+            "Jack-8": "https://lh3.googleusercontent.com/d/1b6-XsxrdVBHMDLPykUO2XSnyHG0YmJMk",
+            "Jin": "https://lh3.googleusercontent.com/d/1_oz_GTxx9VOC-lifghM227yTIrPn_0YD",
+            "Jun": "https://lh3.googleusercontent.com/d/1czW51zbXJuSndj5HXJmxI_qUC79VWJo-",
+            "Kazuya": "https://lh3.googleusercontent.com/d/1nnLkhvQTrycf_tOWa5Ck-eOz2Xn7a2lQ",
+            "King": "https://lh3.googleusercontent.com/d/1wIjHDBWQwdFF1VTiCXQXehYck54HqYjh",
+            "Kuma": "https://lh3.googleusercontent.com/d/1Oy4vd18MWbEod_MNQ9krG7St1z7U1iLl",
+            "Panda": "https://lh3.googleusercontent.com/d/1Z8dVyBelp5yOlcw-pIAp6AaeGM1Xwh_6",
+            "Lars": "https://lh3.googleusercontent.com/d/1CitiDtiZ4Vr0xJz70fwrauQo5pvxbVWC",
+            "Law": "https://lh3.googleusercontent.com/d/1v5r9yyoCADIY8aQdxLxwiv3py74U-NuK",
+            "Lee": "https://lh3.googleusercontent.com/d/1YLZ1cdCc1pSTnmBa0vFgsHl1zwVFf1Q4",
+            "Leo": "https://lh3.googleusercontent.com/d/1bpHqsOqznZHQAD4GC-xuEbPG5gjtJqpF",
+            "Leroy": "https://lh3.googleusercontent.com/d/1nUlm1rPUxOxcg6tUfGxbw2s_KNR4pPg1",
+            "Lili": "https://lh3.googleusercontent.com/d/1NXpCqaywIT4RoGYZhj-C0UTwKMPL5pf_",
+            "Nina": "https://lh3.googleusercontent.com/d/1LBqwiqe3IOBb3bgOcrm85iUYSr1BRiQg",
+            "Paul": "https://lh3.googleusercontent.com/d/1WLwwKVcdDHFQUKXZieO18caxi07ba5JV",
+            "Raven": "https://lh3.googleusercontent.com/d/12RY8ybHuMaPapTpg8mCem1DeQakenKfs",
+            "Reina": "https://lh3.googleusercontent.com/d/1wh6C51pUNwdo9JXSNIhfCHK9QjP_i7O8",
+            "Shaheen": "https://lh3.googleusercontent.com/d/1AD8cSJwXH85w_4jr1XQ5aAQCbD4WksoT",
+            "Steve": "https://lh3.googleusercontent.com/d/1cUfhs18sdpCrcVjeR9cMOLlrsUCpvSo3",
+            "Victor": "https://lh3.googleusercontent.com/d/1bn1Os5lSc5R6CrKLgYV25qgCIUsjBpsk",
+            "Xiaoyu": "https://lh3.googleusercontent.com/d/1Q_3fO6aLXu-kgaeOmoCrUi7NYR-UtFTN",
+            "Yoshimitsu": "https://lh3.googleusercontent.com/d/1IR2Mc3ntEHoAWIQ73XWuDGvu69zegRz1",
+            "Zafina": "https://lh3.googleusercontent.com/d/1PEUYtVEREEzRPyjjgS4B_tCCeHEwOnda",
+            "Eddy": "https://lh3.googleusercontent.com/d/1eYRN6Yf3-GyHOd7_WyIYNBO8EqYYtHPJ",
+            "Lidia": "https://lh3.googleusercontent.com/d/151dP17XS9XMy4anbE6-Y6PKPbJi4-QuW",
+            "Heihachi": "https://lh3.googleusercontent.com/d/1YR4jG3n2UKpf-3KbZpJA6T-kuR_rTeyK",
+            "Clive": "https://lh3.googleusercontent.com/d/1LXtBUOE-pBIemDNuQxe5uGWUsAMpIS4V",
+            "Anna": "https://lh3.googleusercontent.com/d/1gjCM7hG6BiA0_Zqpaqbg5LmsZ9yrqHw_",
+            "Fahkumram": "https://lh3.googleusercontent.com/d/1f2MSmGUXflABPEwyzfUXmG9lx6Y34AmZ",
+            "Armor King": "https://lh3.googleusercontent.com/d/1QDjyFk7d4f_cbgZrhJRNJhmLEYAO9o9K",
+            "Miaryzo": "https://lh3.googleusercontent.com/d/1j0hHi6Wa43i_hTGjiGahcvzpEvLdry0a",
+            "Kunimitsu": "https://lh3.googleusercontent.com/d/1wJW4tCtmA_e-SDKOXA5cqpDoc_LSFSkZ",
+            "Bob": "",
+            "Roger Jr.": "",
+            "？？？": ""
+        };
+
+        // グループごとのセクション構造を生成するヘルパー関数
+        function renderGroup(groupName, names, parentContainer, gridClass) {
+            const section = document.createElement('section');
+            section.className = "mb-10 last:mb-0";
+
+            const header = document.createElement('div');
+            header.className = "flex items-center gap-4 mb-5";
+            
+            let titleColor = "text-zinc-500";
+            if (groupName === "SEASON 1") {
+                titleColor = "text-amber-500";
+            } else if (groupName === "SEASON 2") {
+                titleColor = "text-emerald-500";
+            } else if (groupName === "SEASON 3") {
+                titleColor = "text-purple-500";
+            }
+
+            header.innerHTML = `
+                <h3 class="text-xs font-bold tracking-widest oswald italic ${titleColor}">${groupName}</h3>
+                <div class="flex-grow h-[1px] bg-gradient-to-r from-zinc-800 to-transparent"></div>
+            `;
+            section.appendChild(header);
+
+            const grid = document.createElement('div');
+            grid.className = gridClass;
+
+            names.forEach(name => {
+                const card = document.createElement('div');
+                card.className = "character-card group cursor-pointer overflow-hidden rounded relative flex flex-col bg-zinc-950";
+                
+                card.onclick = () => {
+                    const targetUrl = customLinks[name];
+                    if (targetUrl) {
+                        window.location.href = targetUrl;
+                    } else {
+                        showToast(`「${name.toUpperCase()}」のフレーム表は現在準備中です。`);
+                    }
+                };
+
+                const imageUrl = characterImages[name] || "";
+                const hasImage = imageUrl !== "";
+
+                card.innerHTML = `
+                    <!-- 1. 画像格納エリア (3:4アスペクト比で完全に文字と分離) -->
+                    <div class="relative w-full aspect-[3/4] overflow-hidden bg-zinc-900 border-b border-zinc-900/60 group-hover:border-red-600/40 transition-colors duration-300">
+                        <div class="absolute inset-0 z-0 bg-zinc-900/60 transition-colors duration-300 group-hover:bg-zinc-800"></div>
+
+                        <!-- キャラクター画像 -->
+                        ${hasImage ? `
+                        <img src="${imageUrl}" 
+                             class="absolute inset-0 w-full h-full object-cover z-10 transition-transform duration-500 group-hover:scale-105" 
+                             alt="${name} Portrait" 
+                             id="img-${name}"
+                             onerror="this.style.display='none'; document.getElementById('fallback-icon-${name}').classList.remove('hidden');">
+                        ` : ''}
+
+                        <!-- フォールバック用シルエット -->
+                        <div id="fallback-icon-${name}" class="${hasImage ? 'hidden' : ''} absolute inset-0 z-10 flex items-center justify-center opacity-10 group-hover:opacity-25 transition-opacity duration-300 pointer-events-none">
+                            <svg class="w-12 h-12 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- 2. ネームプレート＆ステータスエリア (画像の外側・下部) -->
+                    <div class="p-2.5 bg-zinc-950 flex items-center justify-between gap-1.5 min-h-[42px]">
+                        <!-- キャラクター名 -->
+                        <div class="text-[11px] md:text-xs font-black oswald uppercase tracking-tighter leading-tight group-hover:text-red-400 transition-colors truncate">
+                            ${name}
+                        </div>
+
+                        <!-- ステータスラベル -->
+                        <div class="shrink-0 flex items-center">
+                            ${customLinks[name] 
+                                ? '<span class="bg-red-950/80 text-red-500 border border-red-900/50 text-[7px] font-black px-1 py-0.5 rounded-sm animate-pulse tracking-wider">READY</span>' 
+                                : '<span class="bg-zinc-900 text-zinc-600 border border-zinc-800 text-[7px] font-black px-1 py-0.5 rounded-sm tracking-wider">PREP</span>'
+                            }
+                        </div>
+                    </div>
+                `;
+                
+                grid.appendChild(card);
+            });
+
+            section.appendChild(grid);
+            parentContainer.appendChild(section);
+        }
+
+        // キャラクター選択カードの描画処理
+        function renderCharacters() {
+            const mainContainer = document.getElementById('selection-area');
+            mainContainer.innerHTML = ""; 
+
+            // 1. BASE GAME（横最大8列表示）
+            renderGroup("BASE GAME", characterGroups["BASE GAME"], mainContainer, "grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3 mb-10");
+
+            // 2. SEASON 1 と SEASON 2 を横並びの2カラム構成にする
+            const seasonRow1 = document.createElement('div');
+            seasonRow1.className = "grid grid-cols-1 md:grid-cols-2 gap-6 mb-10";
+            mainContainer.appendChild(seasonRow1);
+
+            renderGroup("SEASON 1", characterGroups["SEASON 1"], seasonRow1, "grid grid-cols-2 sm:grid-cols-4 gap-3");
+            renderGroup("SEASON 2", characterGroups["SEASON 2"], seasonRow1, "grid grid-cols-2 sm:grid-cols-4 gap-3");
+
+            // 3. SEASON 3 ＆ プレースホルダーの横並び構成
+            const seasonRow2 = document.createElement('div');
+            seasonRow2.className = "grid grid-cols-1 md:grid-cols-2 gap-6";
+            mainContainer.appendChild(seasonRow2);
+
+            renderGroup("SEASON 3", characterGroups["SEASON 3"], seasonRow2, "grid grid-cols-2 sm:grid-cols-4 gap-3");
+
+            // 余白エリア（SEASON 4 COMING SOON）
+            const placeholderBox = document.createElement('div');
+            placeholderBox.className = "border border-dashed border-zinc-900 rounded p-4 flex flex-col justify-center items-center text-center bg-zinc-950/20";
+            placeholderBox.innerHTML = `
+                <div class="text-xs font-bold tracking-widest oswald italic text-zinc-700 mb-1">SEASON 4</div>
+                <div class="text-[9px] text-zinc-600 font-bold tracking-wider">COMING SOON</div>
+            `;
+            seasonRow2.appendChild(placeholderBox);
+        }
+
+        // 自作トースト通知機能
+        let toastTimeout;
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            const toastText = document.getElementById('toast-text');
+            
+            toastText.textContent = message;
+            
+            clearTimeout(toastTimeout);
+            
+            toast.classList.remove('translate-y-20', 'opacity-0', 'pointer-events-none');
+            toast.classList.add('translate-y-0', 'opacity-100');
+            
+            toastTimeout = setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0', 'pointer-events-none');
+            }, 3000);
+        }
+
+        // 初期ロード処理
+        window.onload = function() {
+            renderCharacters();
+            
+            setTimeout(() => {
+                const loader = document.getElementById('loader');
+                if (loader) {
+                    loader.style.opacity = '0';
+                    setTimeout(() => loader.remove(), 500);
+                }
+            }, 500);
+        };
+    </script>
+</body>
+</html>
